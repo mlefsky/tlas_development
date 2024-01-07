@@ -9,7 +9,7 @@ import rioxarray
 import dask 
 from dask.utils import SerializableLock
 import datetime
-
+import matplotlib
 # Nate asked what my code generally looks like, so I am sharing the 
 # code I wrote to generate data products for Alaska.  The details of the
 # processing steps are less important that the overall system structure. 
@@ -155,9 +155,135 @@ def current_time():
     now = datetime.datetime.now() # current date and time
     date_time = now.strftime("%Y%m%d:%H%M%S")
     return(date_time)
+
 ###########################################################################################
 # Main Functions
 ###########################################################################################
+
+def lastool_voxelize(fname,skip_lastools=False):
+    voxel_fname=fname.replace(".laz","_voxel.laz").replace(".las","_voxel.las")
+    voxel_fname_txt=voxel_fname.replace(".laz",".txt").replace(".las",".txt")
+    cmd1="wine /home/lefsky/lastools/bin/lasvoxel64.exe -v -i "+fname+" -o "+voxel_fname
+    cmd2="wine /home/lefsky/lastools/bin/las2txt.exe -cpu64 -i "+voxel_fname+" -parse xyzi -sep comma -o "+voxel_fname_txt+" -header pound"
+    print(cmd1)
+    print(cmd2)
+    if (skip_lastools == False):
+        os.system(cmd1)
+        os.system(cmd2)
+
+    txt_voxels=np.loadtxt(voxel_fname_txt,delimiter=",",comments="#")
+    x=0 ; y=1 ; z=2 ; i=3
+    minx=np.min(txt_voxels[:,x]) ; maxx=np.max(txt_voxels[:,x]) 
+    miny=np.min(txt_voxels[:,y]);maxy=np.max(txt_voxels[:,y])
+    minz=np.min(txt_voxels[:,z]) ; maxz=np.max(txt_voxels[:,z])
+
+    if(minz < 0):
+        minz=0
+        
+    xindex=np.arange(minx,maxx+1)
+    yindex=np.arange(miny,maxy+1)
+    zindex=np.arange(minz,maxz+1)
+    nuvalues_x=len(np.unique(txt_voxels[:,x])) ; nuvalues_y=len(np.unique(txt_voxels[:,y])) ; nuvalues_z=len(np.unique(txt_voxels[:,z]))
+    res_voxels_x=np.round((maxx-minx)/(nuvalues_x-1)*100)/100
+    res_voxels_y=np.round((maxy-miny)/(nuvalues_y-1)*100)/100
+    res_voxels_z=np.round((maxz-minz)/(nuvalues_z-1)*100)/100
+    print(res_voxels_x,maxx,minx,nuvalues_x)
+    print(res_voxels_y,maxy,miny,nuvalues_y)
+    print(res_voxels_z,maxz,minz,nuvalues_z)
+    x_transform=np.round((txt_voxels[:,x]-minx)/res_voxels_x).astype(np.int32)
+    y_transform=np.round((txt_voxels[:,y]-miny)/res_voxels_y).astype(np.int32)
+    z_transform=np.round((txt_voxels[:,z]-minz)/res_voxels_z).astype(np.int32)
+
+    z_transform=np.clip(z_transform, 0, 10000,)
+    
+    max_xindex=max(x_transform)
+    max_yindex=max(y_transform)
+    max_zindex=max(z_transform)
+    max_xindex=max(x_transform)
+    max_yindex=max(y_transform)
+    max_zindex=max(z_transform)
+    print(min(x_transform),max(x_transform))
+    print(min(y_transform),max(y_transform))
+    print(min(z_transform),max(z_transform))
+    voxels=np.zeros((max_xindex+1,max_yindex+1,max_zindex+1))
+    voxels[x_transform,y_transform,z_transform]=txt_voxels[:,i]
+    voxel_sum=np.sum(voxels,2)
+    for ivx in range(0,max_zindex+1):
+        voxels[:,:,ivx]=voxels[:,:,ivx]/voxel_sum
+    voxels=np.clip(voxels,0,1)
+        
+    return({"voxels":voxels,"xrange":[minx,maxx],"yrange":[miny,maxy],"zrange":[minz,maxz],
+         "xindex":xindex,"yindex":yindex,"zindex":zindex})
+
+def plot_voxel_slice(slice,voxel_struct,title=None,xtitle=None,ytitle=None):
+    plt.clf()
+    rainbow=matplotlib.colormaps['rainbow'].resampled(256)
+    rainbow_mod=rainbow(np.linspace(0,1,256))
+    rainbow_mod[0,:]=np.array([0,0,0,0])
+    newcmap=matplotlib.colors.ListedColormap(rainbow_mod)
+    maxv=np.percentile(slice[slice>0],95)
+#    imgplot=plt.imshow(np.rot90(slice),cmap=newcmap,vmin=0,vmax=maxv,aspect='equal')
+    extent=(voxel_struct['xrange'][0],voxel_struct['xrange'][1],voxel_struct['zrange'][0],
+            voxel_struct['zrange'][1])
+            
+    tmp=plot_imshow_with_labels(plt, np.rot90(slice,3), extent,"lower",None,None,
+                                cmap=newcmap,vmin=0,vmax=maxv,
+                                title=title,xtitle=xtitle,ytitle=ytitle)
+
+
+
+def tlas_voxel_zscale(filename,dtm_filename,zmin,scalefactor,las_directory):
+    cmds=[]
+#####################################################################################################
+    cmd_1="""
+{  "pipeline":[
+    {
+        "filename":"$1"
+    },\n"""
+
+    cmds.append(cmd_1.replace("$1",las_directory+filename))
+#####################################################################################################
+    cmd_2="""{ "type":"filters.hag_dem",
+        "raster":"$2"
+    },"""
+    #\n{"type":"filters.range",
+
+#    cmd_2=cmd_2+"\"limits\":\"HeightAboveGround["+str(limits[0])+":"+str(limits[1])+"]\"},"
+    cmds.append(cmd_2.replace("$2",las_directory+dtm_filename))
+#####################################################################################################
+    cmd_3=\
+"""
+{ "type": "filters.ferry","dimensions":"Z=>PassiveZ"},
+{ "type": "filters.assign","value":"Z=(((PassiveZ-$minz)/$scalev)+HeightAboveGround)"},
+    
+"""
+
+
+    print(zmin)
+    cmds.append(cmd_3.replace("$minz",str(zmin)).replace("$scalev",str(scalefactor)))
+
+        
+#####################################################################################################
+    cmd_3=\
+"""
+{
+        "type":"writers.las",
+        "filename":"$3",        
+        "compression":"lasperf",
+        "extra_dims":"PassiveZ=double"}]}
+""" 
+#####################################################################################################
+    out_filename=filename.replace(".laz","_hag_scale_"+str((round(scalefactor*10)/10)).replace(".","")+".laz")
+    cmd_3=cmd_3.replace("$3",las_directory+out_filename)
+    cmds.append(cmd_3)
+    print(cmds)
+    json_filename=las_directory+filename.replace(".laz","_hag_scale_"+str((round(scalefactor*10)/10)).replace(".","")+".json")
+     #print(">>>>>>>>>>>>>",json_filename)
+    with open(json_filename, 'w') as f:
+        for c in cmds:
+            f.write(c)
+    return((json_filename,las_directory+out_filename))
+
 
 def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
 # Makes a dtm from a las file using the PDAL smrf alogrithm
@@ -854,10 +980,35 @@ def do_sub_analysis(las_directory,res):
 #==============================================================================
 #==============================================================================
 
+def mk_voxels(filename,dtm_filename,las_directory):
+   las_directory="/home/lefsky/time_trials/"
+   dtm_filename="tile_66_136_dtm.tif"
+   (json_file,hag_filename)=tlas_voxel_zscale(filename,dtm_filename,8153,4,las_directory) 
+   os.system("pdal pipeline "+json_file)
+   voxels=lastool_voxelize(hag_filename,skip_lastools=False)
+   return(voxels)
+
 
 def main():   
+    filename="tile_66_136_sub_01.laz"
+    las_directory="/home/lefsky/time_trials/"
+    dtm_filename="tile_66_136_dtm.tif"
+    tmp1=mk_voxels(filename,dtm_filename,las_directory)
+    
+    filename="tile_66_136_sub_02.laz"
+    las_directory="/home/lefsky/time_trials/"
+    dtm_filename="tile_66_136_dtm.tif"
+    tmp2=mk_voxels(filename,dtm_filename,las_directory)
 
-#    res=6.56
+    diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
+    print("minmax ",np.min(diff),np.max(diff))
+    return((tmp1,tmp2,diff)) 
+
+#               tile_66_136_sub_01_hagscale_voxel.txt
+#    return(lastool_voxelize('/home/lefsky/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
+ 
+           
+ #    res=6.56
     res=6.56
 #    res=1.64
     res_code=str(res).replace('.',"")
@@ -874,9 +1025,170 @@ def main():
 #    print(dummy)
 
           
-if __name__ == "__main__":  
-
-
+#if __name__ == "__main__":  
 
     # execute only if run as a scrip
-    tmp=main()
+ #   tmp=main()
+
+
+
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=
+
+
+
+
+
+
+
+from matplotlib.gridspec import GridSpec
+
+def index_to_coordinate(index, extent, origin):
+    """Return the pixel center of an index."""
+    left, right, bottom, top = extent
+
+    hshift = 0.5 * np.sign(right - left)
+    left, right = left + hshift, right - hshift
+    vshift = 0.5 * np.sign(top - bottom)
+    bottom, top = bottom + vshift, top - vshift
+
+    if origin == 'upper':
+        bottom, top = top, bottom
+
+    return {
+        "[0, 0]": (left, bottom),
+        "[M', 0]": (left, top),
+        "[0, N']": (right, bottom),
+        "[M', N']": (right, top),
+    }[index]
+
+
+def get_index_label_pos(index, extent, origin, inverted_xindex):
+    """
+    Return the desired position and horizontal alignment of an index label.
+    """
+    if extent is None:
+        extent = lookup_extent(origin)
+    left, right, bottom, top = extent
+    x, y = index_to_coordinate(index, extent, origin)
+
+    is_x0 = index[-2:] == "0]"
+    halign = 'left' if is_x0 ^ inverted_xindex else 'right'
+    hshift = 0.5 * np.sign(left - right)
+    x += hshift * (1 if is_x0 else -1)
+    return x, y, halign
+
+
+def get_color(index, data, cmap):
+    """Return the data color of an index."""
+    val = {
+        "[0, 0]": data[0, 0],
+        "[0, N']": data[0, -1],
+        "[M', 0]": data[-1, 0],
+        "[M', N']": data[-1, -1],
+    }[index]
+    return cmap(val / data.max())
+
+
+def lookup_extent(origin):
+    """Return extent for label positioning when not given explicitly."""
+    if origin == 'lower':
+        return (-0.5, 6.5, -0.5, 5.5)
+    else:
+        return (-0.5, 6.5, 5.5, -0.5)
+
+
+def set_extent_None_text(ax):
+    ax.text(3, 2.5, 'equals\nextent=None', size='large',
+            ha='center', va='center', color='w')
+
+
+def plot_imshow_with_labels(ax, data, extent, origin, xlim, ylim,cmap=None,vmin=None,vmax=None,
+                            title=None,xtitle=None,ytitle=None):
+#    fig = plt.figure(tight_layout=False,figsize=(6,4))
+#    """Actually run ``imshow()`` and add extent and index labels."""
+#    print(title,xtitle,ytitle)
+    im = ax.imshow(data, origin=origin, extent=extent,aspect='auto',cmap=cmap,vmin=vmin,vmax=vmax)
+    font = {'family':'serif','color':'Black','size':15}
+    plt.xlabel(xtitle,fontdict = font)
+    plt.ylabel(ytitle,fontdict = font)
+    plt.title(title,fontdict = font)
+
+    ax.ticklabel_format(style='plain')
+    # extent labels (left, right, bottom, top)
+    left, right, bottom, top = im.get_extent()
+#    print(    left, right, bottom, top)
+    if xlim is None or top > bottom:
+        upper_string, lower_string = 'top', 'bottom'
+    else:
+        upper_string, lower_string = 'bottom', 'top'
+    if ylim is None or left < right:
+        port_string, starboard_string = 'left', 'right'
+        inverted_xindex = False
+    else:
+        port_string, starboard_string = 'right', 'left'
+        inverted_xindex = True
+#    bbox_kwargs = {'fc': 'w', 'alpha': .75, 'boxstyle': "round4"}
+#    ann_kwargs = {'xycoords': 'axes fraction',
+#                  'textcoords': 'offset points',
+#                  'bbox': bbox_kwargs}
+#    ax.annotate(upper_string, xy=(.5, 1), xytext=(0, -1),
+#                ha='center', va='top', **ann_kwargs)
+#    ax.annotate(lower_string, xy=(.5, 0), xytext=(0, 1),
+#                ha='center', va='bottom', **ann_kwargs)
+#    ax.annotate(port_string, xy=(0, .5), xytext=(1, 0),
+#                ha='left', va='center', rotation=90,
+#                **ann_kwargs)
+#    ax.annotate(starboard_string, xy=(1, .5), xytext=(-1, 0),
+#                ha='right', va='center', rotation=-90,
+#                **ann_kwargs)
+#    ax.set_title(f'origin: {origin}')
+
+    # index labels
+#    for index in ["[0, 0]", "[0, N']", "[M', 0]", "[M', N']"]:
+#        tx, ty, halign = get_index_label_pos(index, extent, origin,
+#                                             inverted_xindex)
+#        facecolor = get_color(index, data, im.get_cmap())
+#        ax.text(tx, ty, index, color='white', ha=halign, va='center',
+#                bbox={'boxstyle': 'square', 'facecolor': facecolor})
+    if xlim:
+        ax.set_xlim(*xlim)
+    if ylim:
+        ax.set_ylim(*ylim)
+
+
+def generate_imshow_demo_grid(extents, xlim=None, ylim=None):
+    N = len(extents)
+#    fig = plt.figure(tight_layout=True,figsize=(6,4))
+#    fig.set_size_inches(6, N * (11.25) / 5)
+    gs = GridSpec(N, 5, figure=fig)
+
+    columns = {'label': [fig.add_subplot(gs[j, 0]) for j in range(N)],
+               'upper': [fig.add_subplot(gs[j, 1:3]) for j in range(N)],
+               'lower': [fig.add_subplot(gs[j, 3:5]) for j in range(N)]}
+    x, y = np.ogrid[0:6, 0:7]
+    data = x + y
+
+    for origin in ['upper', 'lower']:
+        for ax, extent in zip(columns[origin], extents):
+            plot_imshow_with_labels(ax, data, extent, origin, xlim, ylim)
+
+    columns['label'][0].set_title('extent=')
+    for ax, extent in zip(columns['label'], extents):
+        if extent is None:
+            text = 'None'
+        else:
+            left, right, bottom, top = extent
+            text = (f'left: {left:0.1f}\nright: {right:0.1f}\n'
+                    f'bottom: {bottom:0.1f}\ntop: {top:0.1f}\n')
+        ax.text(1., .5, text, transform=ax.transAxes, ha='right', va='center')
+        ax.axis('off')
+    return columns#
