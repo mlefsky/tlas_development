@@ -314,8 +314,8 @@ def generate_imshow_demo_grid(extents, xlim=None, ylim=None):
 def lastool_voxelize(fname,skip_lastools=False):
     voxel_fname=fname.replace(".laz","_voxel.laz").replace(".las","_voxel.las")
     voxel_fname_txt=voxel_fname.replace(".laz",".txt").replace(".las",".txt")
-    cmd1="wine /home/mlefsky/lastools/bin/lasvoxel64.exe -v -i "+fname+" -o "+voxel_fname
-    cmd2="wine /home/mlefsky/lastools/bin/las2txt.exe -cpu64 -i "+voxel_fname+" -parse xyzi -sep comma -o "+voxel_fname_txt+" -header pound"
+    cmd1="wine /home/ubuntu/lastools/bin/lasvoxel64.exe -v -i "+fname+" -o "+voxel_fname
+    cmd2="wine /home/ubuntu/lastools/bin/las2txt.exe -cpu64 -i "+voxel_fname+" -parse xyzi -sep comma -o "+voxel_fname_txt+" -header pound"
     #print(cmd1)
     #print(cmd2)
     if (skip_lastools == False):
@@ -960,7 +960,7 @@ def merge_files(file_list,band_names,ofilename,las_directory):
             #print(type(id))
             layer=file_list[int(id)-1]
             #print("ID",int(id),layer)  img
-            #print("/home/mlefsky/time_trials/"+ofilename)
+            #print("/home/ubuntu/time_trials/"+ofilename)
             with rasterio.open(las_directory+layer,"r",**meta) as src1:
 
                 tmp=src1.read(1)
@@ -988,7 +988,7 @@ def merge_files(file_list,band_names,ofilename,las_directory):
 #    with rasterio.open(ofilename, 'r',**meta) as dst:
         #print('DST',dst.meta)
     #print("done")
-    #with open("/home/mlefsky/time_trials/alltif.txt","r") as file:
+    #with open("/home/ubuntu/time_trials/alltif.txt","r") as file:
     #    filenames=file.readlines()
     return()
 
@@ -1092,7 +1092,7 @@ def do_sub_analysis(las_directory,res):
     #start=time.time(3P
     outcmds=[]
     for ix in range(1,5):    
-        las_directory="/home/mlefsky/time_trials/trial_656/"
+        las_directory="/home/ubuntu/time_trials/trial_656/"
 
         # setup files for two runs of tlas_cover and tlas_chm
         if (ix==1):
@@ -1159,7 +1159,7 @@ def do_sub_analysis(las_directory,res):
 #==============================================================================
 
 def mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False):
-   las_directory="/home/mlefsky/time_trials/"
+   las_directory="/home/ubuntu/time_trials/"
    dtm_filename="tile_66_136_dtm.tif"
    (json_file,hag_filename)=tlas_voxel_zscale(filename,dtm_filename,8153,4,las_directory) 
    if skip_lastools == False:
@@ -1168,14 +1168,14 @@ def mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False):
    return(voxels)
 
 
-def main():   
+def main(skip_lastools=False):   
     filename="tile_66_136_sub_01.laz"
-    las_directory="/home/mlefsky/time_trials/"
+    las_directory="/home/ubuntu/time_trials/"
     dtm_filename="tile_66_136_dtm.tif"
     tmp1=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
     
     filename="tile_66_136_sub_02.laz"
-    las_directory="/home/mlefsky/time_trials/"
+    las_directory="/home/ubuntu/time_trials/"
     dtm_filename="tile_66_136_dtm.tif"
     tmp2=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
 
@@ -1185,10 +1185,10 @@ def main():
 #
 #               tile_66_136_sub_01_hagscale_voxel.txt
     
-    print(lastool_voxelize('/home/mlefsky/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
+    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
  
     
-    print(lastool_voxelize('/home/mlefsky/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
+    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
 
     return()
           
@@ -1198,7 +1198,7 @@ def main():
     res_code=str(res).replace('.',"")
 
     file_list,band_names=tile_files(res)
-    las_directory="/home/mlefsky/time_trials/trial_$res_code/"
+    las_directory="/home/ubuntu/time_trials/trial_$res_code/"
     las_directory=las_directory.replace("$res_code",res_code)
 
 #    tmp=do_sub_analysis(las_directory,res)
