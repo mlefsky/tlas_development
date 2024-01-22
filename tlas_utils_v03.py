@@ -145,20 +145,16 @@ def clean_dirname(dirname):
 
 def clean_filename_parts(filename,dirname):
     filename_out=filename.replace(dirname,"")
-    if filename_out[-1] == "_":  
-        filename_out= filename_out[:len(filename_out)-1]
-    if filename_out[-1] == "_":  
-        filename_out= filename_out[:len(filename_out)-1]
+#    if filename_out[-1] == "_":  
+#        filename_out= filename_out[:len(filename_out)-1]
+#    if filename_out[-1] == "_":  
+ #       filename_out= filename_out[:len(filename_out)-1]
     return(filename_out)
 
 def current_time():
     now = datetime.datetime.now() # current date and time
     date_time = now.strftime("%Y%m%d:%H%M%S")
     return(date_time)
-
-
-
-
 
 
 
@@ -473,6 +469,7 @@ def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
  #   print("LF:",las_filename_in)
     las_directory=clean_dirname(las_directory_in)
     las_filename=clean_filename_parts(las_filename_in,las_directory)
+    
     las_filename=las_directory+las_filename
     trial_id=clean_filename_parts(trial_id_in,las_directory)
 
@@ -535,7 +532,7 @@ def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
     cmds=cmds.replace("\\","\\\\")
     #print("DOF",dtm_out_filename)        
 
-    json_filename=las_directory+'tlas_dtm'+trial_id+'.json'
+    json_filename=las_directory+'tlas_dtm_'+las_filename_in.replace(".las","").replace(".laz","")+trial_id+'.json'
     #print(">>>>>>>>>>>>>",json_filename)
     with open(json_filename, 'w') as f:
         f.write(cmds)
@@ -595,7 +592,9 @@ def tlas_pdsm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
     cmds=cmds.replace("$res",str(res))
     cmds=cmds.replace("\\","\\\\")
  
-    with open(las_directory+'tlas_dsm'+trial_id+'.json', 'w') as f:
+    
+
+    with open(las_directory+'tlas_dtm_'+las_filename_in.replace(".las","").replace(".laz","")+trial_id+'.json', 'w') as f:
       f.write(cmds)
 #    bash_command="pdal pipeline "+las_directory+'tlas_dsm'+trial_id+'.json'
     bash_command="pdal pipeline "+'tlas_dsm'+trial_id+'.json'
@@ -684,7 +683,7 @@ def tlas_chm(las_filename_in,las_directory_in,trial_id_in,in_res,hlimits=None,
 #        #print(" ".join(cmd))
 
     bash_command=" ".join(cmd)
-
+  
     out={"cmd_list":cmd,"cmd":"".join(cmd),"script":"","out_filename":las_directory+dtm_out_filename,
         "json_file":"","type":"chm","trial_id":trial_id,"las_filename":las_filename,
         "las_directory":las_directory,"dtm_outstruct":dtm_outstruct,
@@ -696,7 +695,7 @@ def tlas_chm(las_filename_in,las_directory_in,trial_id_in,in_res,hlimits=None,
 def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="",read_dtm="",*kwargs):
 
 #    print("res_pdtm: ",res)
-
+    print(">>>>>",las_filename)
     if read_dtm == "":
         dtm_filename=las_filename.replace(".las",trial_+"_pdtm.tif").replace(".laz",trial_+"_pdtm.tif")
     else:
@@ -729,7 +728,7 @@ def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="
         },\n{"type":"filters.range",
         """        
         cmd_2=cmd_2+"\"limits\":\"HeightAboveGround["+str(limits[0])+":"+str(limits[1])+"]\"},"
-        cmds.append(cmd_2.replace("$2",las_directory+dtm_filename))
+        cmds.append(cmd_2.replace("$2",dtm_filename))
         
 #####################################################################################################
     cmd_3=\
@@ -748,13 +747,13 @@ def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="
     cmd_3=cmd_3.replace("$res",str(res))
     cmds.append(cmd_3)
     
-    json_filename=las_directory+'mk_density_'+limit_code+"_"+trial_+'.json'
+    json_filename=las_directory+'mk_density_'+out_filename+"_"+limit_code+"_"+trial_+'.json'
     json_filename=json_filename.replace("__","_")
     json_filename=json_filename.replace("__","_")
     bash_script=""
     out={"cmd_list":cmds,"cmd":" ".join(cmds),"out_ filename":out_filename,
         "json_file":json_filename,"type":"density_"+limit_code,"trial_":trial_,
-        "las_directory":las_directory,"filename":las_filename,"bash_cmd":bash_script,"limit_code":limit_code,
+        "las_directory":las_directory,"filename":out_filename,"bash_cmd":bash_script,"limit_code":limit_code,
         "bash_command":"pdal pipeline "+json_filename,res:res}
     print("]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]")
     with open(json_filename, 'w') as f:
@@ -771,18 +770,40 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
 
     cmds=[]
     pdensity_struct=tlas_pdensity(las_filename,las_directory,trial_,res,read_dtm=dtm_filename,limits=None)
-#    print("><><><><><",las_filename,las_directory,trial_,res,dtm_filename)
-#    cmds.append("pdal pipeline "+
-#                pdensity_struct['json_file'])
+    print()
+    print()
+    print()
+    
+    print(pdensity_struct)
+    print()
+    print()
+    print()
+    print()
+    print()
+    print("==========================================================",las_filename,las_directory,trial_,res,dtm_filename)
+    cmds.append("pdal pipeline "+
+                pdensity_struct['json_file'])
+
+
     pdensity_lt1_struct=tlas_pdensity(las_filename,
             las_directory,trial_,res,read_dtm=dtm_filename,limits=[-2,1],limit_code="lt1")
-#    cmds.append("pdal pipeline "+
-#        pdensity_lt1_struct['json_file'])
-    filename_A=las_directory+pdensity_struct['out_filename']
-    filename_B=pdensity_lt1_struct['out_filename']
+    print()
+    print()
+    print()
+    print()
+    print(pdensity_lt1_struct)
+    print()
+    print()
+    print()
+    print()
+    cmds.append("pdal pipeline "+pdensity_lt1_struct['json_file'])
+    
+    filename_A=las_directory+pdensity_struct['filename']
+    filename_B=pdensity_lt1_struct['filename']
+    
     ofilename=las_directory+filename_B.replace('.tif','_cover.tif').replace("_lt1","").replace("_density","")
 
-    i=rasterio.open(las_directory+dtm_filename)
+    i=rasterio.open(dtm_filename)
     bb=i.bounds
     #print(bb)
     left=bb[0]
@@ -801,14 +822,14 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
     #print(">>>>>>>>>>>>>>>>>",cmd)
     cmds.append(" ".join(cmd))
 
-    bash_filename=las_directory+'mk_cover'+trial_+'.bash'
+    bash_filename=las_directory+'mk_cover_'+las_filename.replace(".las","").replace(".laz","")+trial_+'.bash'
 
 
-#    with open(bash_filename, 'w') as f:
-#        for ix,c in enumerate(cmds):
-#            f.write(c+"\n")
-#            print(c)
-#            print("\n")
+    with open(bash_filename, 'w') as f:
+        for ix,c in enumerate(cmds):
+            f.write(c+"\n")
+            print(c)
+            print("\n")
 
     bash_command=" ".join(cmds)
     out=""
@@ -869,8 +890,8 @@ def image_to_table(image_fname,skip1,csv_fname,res):
     import glob
 
     res_code=str(res).replace(".","")
-    file_list,band_names=tile_files(res)
-
+#    file_list,band_names=tile_files(res)
+    
     ds = rasterio.open(image_fname, "r") #Read the raster
 
     a = ds.read(1) #Read as a numpy array
@@ -900,6 +921,7 @@ def image_to_table(image_fname,skip1,csv_fname,res):
 #    src_io=np.squeeze(ds.read().astype(rasterio.float32))
     print(ds.meta)
     print("lbn",len(band_names),len(file_list))
+    print("BNBNNBBN",band_names)
     for ix,band in enumerate(band_names):
         print("ix",int(ix+1),band)
 #        print(list(ds.sample(coord_list,indexes=int(ix)+1)))
@@ -1086,56 +1108,42 @@ def tile_files(res):
 
 
 
-def do_sub_analysis(las_directory,res):
+def do_sub_analysis(las_directory,files,res):
 
     res_code=str(res).replace(".","")
     #start=time.time(3P
     outcmds=[]
-    for ix in range(1,5):    
-        las_directory="/home/ubuntu/time_trials/trial_656/"
+    trial_id=""
+    for filename in files:
+        print(filename)
+#        las_directory="/home/ubuntu/time_trials/trial_656/"
 
         # setup files for two runs of tlas_cover and tlas_chm
-        if (ix==1):
-            trial_id="_sub_01"
-            filename="tile_66_136_sub_01.laz"
-            dtm_filename="tile_66_136_sub_01_$res_code_pdtm.tif"
-        if (ix==2):
-            trial_id="_sub_02"
-            filename="tile_66_136_sub_02.laz"
-            dtm_filename="tile_66_136_sub_02_$res_code_pdtm.tif"
-        if (ix==3):
-            trial_id="_sub_03"
-            filename="tile_66_136_sub_03.laz"
-            dtm_filename="tile_66_136_sub_03_$res_code_pdtm.tif"
-        if (ix==4):
-            trial_id="_sub_04"
-            filename="tile_66_136_sub_04.laz"
-            dtm_filename="tile_66_136_sub_04_$res_code_pdtm.tif"
-
-        dtm_filename=dtm_filename.replace("$res_code",res_code)
+ 
+#        dtm_filename=dtm_filename.replace("$res_code",res_code)
 #        print(dtm_filename)
-
-
-        chm_outstruct=tlas_chm(filename,las_directory,trial_id,res,hlimits=[0,60],read_dtm=dtm_filename)
+        dtm_filename=""
+        chm_outstruct=tlas_chm(filename,las_directory,trial_id,res,hlimits=[0,60])#read_dtm=dtm_filename)
         outfile_bash=las_directory+filename.replace('.las',trial_id+'_chm.bash').replace('.laz',trial_id+'_chm.bash')
 
         out=[]        
         bash_commands=[]
         collect_commands=collect_bash_commands(chm_outstruct,out)
-               
+        
+#=============================================================================
         with open(outfile_bash, 'w') as f:  
             for o in out: 
                 f.write(o+"\n")
                 
         outcmds.append("bash "+outfile_bash)
+        dtm_filename=las_directory+filename.replace(".las","_pdtm.tif").replace(".laz","_pdtm.tif")
 
         cover_outstruct=tlas_cover(filename,dtm_filename,las_directory,trial_id,res=res)
         outfile_bash=las_directory+filename.replace('.las',trial_id+'_cover.bash').replace('.laz',trial_id+'_script.bash')
         collect_commands=collect_bash_commands(cover_outstruct,out)
 
-
         with open(outfile_bash, 'w') as f:  
- #           print(">>>>>>>>>>>>>",outfile_bash)
+  #           print(">>>>>>>>>>>>>",outfile_bash)
             bash_commands.append(outfile_bash)
             for o in out: 
                 f.write(o+"\n")
@@ -1148,6 +1156,7 @@ def do_sub_analysis(las_directory,res):
 #    print(outcmds)
 
     
+#=============================================================================
             
 
 #==============================================================================
@@ -1169,19 +1178,30 @@ def mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False):
 
 
 def main(skip_lastools=False):   
-    filename="tile_66_136_sub_01.laz"
-    las_directory="/home/ubuntu/time_trials/"
-    dtm_filename="tile_66_136_dtm.tif"
-    tmp1=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
     
-    filename="tile_66_136_sub_02.laz"
-    las_directory="/home/ubuntu/time_trials/"
-    dtm_filename="tile_66_136_dtm.tif"
-    tmp2=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
+    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
+    las_directory="/home/ubuntu/density_comparison_v2/"
 
-    diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
-    print("minmax ",np.min(diff),np.max(diff))
-    return((tmp1,tmp2,diff)) 
+    do_sub_analysis(las_directory,laz_files,3.28)
+     # 
+ 
+    return()   
+ 
+#    filename="tile_66_136_sub_01.laz"
+#    dtm_filename="tile_66_136_dtm.tif"
+ 
+#    tmp1=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
+ #   
+ #   filename="tile_66_136_sub_02.laz"
+ #   las_directory="/home/ubuntu/time_trials/"
+ #   dtm_filename="tile_66_136_dtm.tif"
+ #   tmp2=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
+
+ #   diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
+ #   print("minmax ",np.min(diff),np.max(diff))
+ #   return((tmp1,tmp2,diff)) 
+
+
 #
 #               tile_66_136_sub_01_hagscale_voxel.txt
     
