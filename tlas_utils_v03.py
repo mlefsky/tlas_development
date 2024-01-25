@@ -1223,8 +1223,8 @@ def main(skip_lastools=False):
 
 #    tmp=do_sub_analysis(las_directory,res)
 
-    tmp=merge_files(file_list,band_names,"tile_66_136_"+res_code+"_stack.tif",las_directory)
-    dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack.tif",10000,
+#    tmp=merge_files(file_list,band_names,"tile_66_136_"+res_code+"_stack.tif",las_directory)
+ @   dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack.tif",10000,
                          las_directory+"tile_66_136_"+res_code+"_stack.tif",res)
 #    print(dummy)
 
