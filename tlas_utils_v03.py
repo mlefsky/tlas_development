@@ -116,7 +116,7 @@ import matplotlib
 #
 # TTD:  I'd like to have the Date/Time of analysis and run duration of each process
 #       The Name and Last modification date/time of the code being run.
-#	Run duration of analysis
+#    Run duration of analysis
 #       For some products, we need to wait to get results from various routines and we should 
 #       have code that watches for the end of a process and then moves on.  
 #   Determine dependencies to allow multiple steps at the same time rathewr than
@@ -469,7 +469,6 @@ def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
  #   print("LF:",las_filename_in)
     las_directory=clean_dirname(las_directory_in)
     las_filename=clean_filename_parts(las_filename_in,las_directory)
-    
     las_filename=las_directory+las_filename
     trial_id=clean_filename_parts(trial_id_in,las_directory)
 
@@ -524,18 +523,22 @@ def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
 """
 #####################################################################################################
 
-    
     dtm_out_filename=las_filename.replace(".las",trial_id+"_pdtm.tif").replace(".laz",trial_id+"_pdtm.tif")
+
+    
     cmds=cmds.replace("$1",las_filename)
     cmds=cmds.replace("$2",dtm_out_filename)
     cmds=cmds.replace("$res",str(res))
     cmds=cmds.replace("\\","\\\\")
-    #print("DOF",dtm_out_filename)        
+    print("DOF",dtm_out_filename)        
 
-    json_filename=las_directory+'tlas_dtm_'+las_filename_in.replace(".las","").replace(".laz","")+trial_id+'.json'
-    #print(">>>>>>>>>>>>>",json_filename)
+#    json_filename=las_directory+'tlas_dtm_'+las_filename_in.replace(".las","").replace(".laz","")+trial_id+'.json'
+    json_filename=dtm_out_filename.replace('.tif','.json')
+    print(">>>>>>>>>>>>>",json_filename)
+    print(">>>>>>>>>>>>>",dtm_out_filename)
     with open(json_filename, 'w') as f:
         f.write(cmds)
+    
     cmd=["pdal", "pipeline",las_directory+"tlas_dtm"+trial_id+".json"] 
     bash_command=" ".join(cmd)
 
@@ -544,6 +547,8 @@ def tlas_pdtm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
          "las_directory":las_directory,"script_runtime":current_time(),"res":res,
          "bash_command":bash_command}
     return(out)
+
+
 
 def tlas_pdsm(las_filename_in,las_directory_in,trial_id_in,res,**kwargs):
 #    print("res_pdsm: ",res)
@@ -643,16 +648,16 @@ def tlas_chm(las_filename_in,las_directory_in,trial_id_in,in_res,hlimits=None,
 #        if (res == 0) and (res_dsm !=0):
 #            res=res_dsm
 
-    if res == 0:
-        res=in_res
+#    if res == 0:
+    res=in_res
 
-    if read_dtm == "":
-        dtm_outstruct=tlas_pdtm(las_filename,las_directory,trial_id,res)
-        dtm_out_filename=dtm_outstruct['out_filename']
+#    if read_dtm == "":
+    dtm_outstruct=tlas_pdtm(las_filename,las_directory,trial_id,res)
+    dtm_out_filename=dtm_outstruct['out_filename']
 
-    if read_dsm == '':        
-       dsm_outstruct=tlas_pdsm(las_filename,las_directory,trial_id,res)
-       dsm_out_filename=dsm_outstruct['out_filename']
+#    if read_dsm == '':        
+    dsm_outstruct=tlas_pdsm(las_filename,las_directory,trial_id,res)
+    dsm_out_filename=dsm_outstruct['out_filename']
         
 #    print("dof",las_filename)
 #    print("TMP@",dtm_out_filename)
@@ -701,7 +706,7 @@ def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="
     else:
         dtm_filename=read_dtm
 #        dtm_filename=read_dtm.replace('.tif',trial_+".tif")
-#    print(">>>",dtm_filename)
+    print(">>>",dtm_filename)
 
     if len(limit_code) != 0:
         if limit_code[1] != "":
@@ -746,15 +751,19 @@ def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="
     cmd_3=cmd_3.replace("$3",las_directory+out_filename)
     cmd_3=cmd_3.replace("$res",str(res))
     cmds.append(cmd_3)
-    
-    json_filename=las_directory+'mk_density_'+out_filename+"_"+limit_code+"_"+trial_+'.json'
+    print(out_filename,limit_code,trial_)
+    json_filename=out_filename.replace(".tif","")
+    json_filename=las_directory+'mk_density_'+json_filename+'.json'#+"_"+limit_code+"_"+trial_+'.json'
     json_filename=json_filename.replace("__","_")
     json_filename=json_filename.replace("__","_")
+    print(">>>>>>>>>>>>>>>",json_filename)
+
     bash_script=""
     out={"cmd_list":cmds,"cmd":" ".join(cmds),"out_ filename":out_filename,
         "json_file":json_filename,"type":"density_"+limit_code,"trial_":trial_,
         "las_directory":las_directory,"filename":out_filename,"bash_cmd":bash_script,"limit_code":limit_code,
         "bash_command":"pdal pipeline "+json_filename,res:res}
+    print(trial_,limit_code)
     print("]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]")
     with open(json_filename, 'w') as f:
         for c in cmds:
@@ -767,14 +776,15 @@ def tlas_pdensity(las_filename,las_directory,trial_,res,limits=None,limit_code="
 
 def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
 #    print("res_cover: ",res)
-
+    import sys
     cmds=[]
     pdensity_struct=tlas_pdensity(las_filename,las_directory,trial_,res,read_dtm=dtm_filename,limits=None)
-    print()
+    print(las_filename)
+#    sys.exit()
     print()
     print()
     
-    print(pdensity_struct)
+#    print(pdensity_struct)
     print()
     print()
     print()
@@ -784,14 +794,14 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
     cmds.append("pdal pipeline "+
                 pdensity_struct['json_file'])
 
-
+    print(":::::::::::::::::::::::::::::::::::"),pdensity_struct['json_file']
     pdensity_lt1_struct=tlas_pdensity(las_filename,
             las_directory,trial_,res,read_dtm=dtm_filename,limits=[-2,1],limit_code="lt1")
     print()
     print()
     print()
     print()
-    print(pdensity_lt1_struct)
+#    print(pdensity_lt1_struct)
     print()
     print()
     print()
@@ -803,6 +813,7 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
     
     ofilename=las_directory+filename_B.replace('.tif','_cover.tif').replace("_lt1","").replace("_density","")
 
+    #    input("Run the first script now") 
     i=rasterio.open(dtm_filename)
     bb=i.bounds
     #print(bb)
@@ -812,6 +823,7 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
     top=bb[3]
     projwin="--projwin "+str(left)+" "+str(top)+" "+str(right)+" "+str(bottom)+ " "
     #print("PW: ",projwin)
+
 
 #####################################################################################################
     cmd=['gdal_calc.py','--quiet ','-A ',filename_A,
@@ -823,8 +835,9 @@ def tlas_cover(las_filename,dtm_filename,las_directory,trial_,res=3.28):
     cmds.append(" ".join(cmd))
 
     bash_filename=las_directory+'mk_cover_'+las_filename.replace(".las","").replace(".laz","")+trial_+'.bash'
-
-
+    print(len(cmds))
+    print("(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((")
+    print(bash_filename)
     with open(bash_filename, 'w') as f:
         for ix,c in enumerate(cmds):
             f.write(c+"\n")
@@ -1125,7 +1138,8 @@ def do_sub_analysis(las_directory,files,res):
         dtm_filename=""
         chm_outstruct=tlas_chm(filename,las_directory,trial_id,res,hlimits=[0,60])#read_dtm=dtm_filename)
         outfile_bash=las_directory+filename.replace('.las',trial_id+'_chm.bash').replace('.laz',trial_id+'_chm.bash')
-
+        print(outfile_bash)
+        print(files)
         out=[]        
         bash_commands=[]
         collect_commands=collect_bash_commands(chm_outstruct,out)
@@ -1139,9 +1153,12 @@ def do_sub_analysis(las_directory,files,res):
         dtm_filename=las_directory+filename.replace(".las","_pdtm.tif").replace(".laz","_pdtm.tif")
 
         cover_outstruct=tlas_cover(filename,dtm_filename,las_directory,trial_id,res=res)
-        outfile_bash=las_directory+filename.replace('.las',trial_id+'_cover.bash').replace('.laz',trial_id+'_script.bash')
+#        outfile_bash=las_directory+filename.replace('.las',trial_id+'_cover.bash').replace('.laz',trial_id+'_script.bash')
         collect_commands=collect_bash_commands(cover_outstruct,out)
 
+        print("{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
+
+        print(outfile_bash)
         with open(outfile_bash, 'w') as f:  
   #           print(">>>>>>>>>>>>>",outfile_bash)
             bash_commands.append(outfile_bash)
@@ -1179,13 +1196,16 @@ def mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False):
 
 def main(skip_lastools=False):   
     
-    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
+#    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
+
     las_directory="/home/ubuntu/density_comparison_v2/"
 
-    do_sub_analysis(las_directory,laz_files,3.28)
+
+#####################################################################
+ #   do_sub_analysis(las_directory,laz_files,3.28)
      # 
  
-    return()   
+ #   return()   
  
 #    filename="tile_66_136_sub_01.laz"
 #    dtm_filename="tile_66_136_dtm.tif"
@@ -1200,32 +1220,45 @@ def main(skip_lastools=False):
  #   diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
  #   print("minmax ",np.min(diff),np.max(diff))
  #   return((tmp1,tmp2,diff)) 
+#####################################################################
 
 
 #
 #               tile_66_136_sub_01_hagscale_voxel.txt
     
-    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
- 
-    
-    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
+  
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
 
-    return()
+#    return()
           
  #    re=6.56
-    res=6.56
+#    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
+    laz_files=["nodup_800_6.laz"]
+    las_directory="/home/ubuntu/density_comparison_v2/"
+
+    res=3.28
 #    res=1.64
-    res_code=str(res).replace('.',"")
+#    res_code=str(res).replace('.',"")
+    res_code=""
+    
+    do_sub_analysis(las_directory,laz_files,res)
 
-    file_list,band_names=tile_files(res)
-    las_directory="/home/ubuntu/time_trials/trial_$res_code/"
-    las_directory=las_directory.replace("$res_code",res_code)
-
+#    file_list,band_names=tile_files(res)
+#    las_directory="/home/ubuntu/time_trials/trial_$res_code/"
+#    las_directory=las_directory.replace("$res_code",res_code)
+    laz_files=["nodup_800_6.laz"]
+    print 
 #    tmp=do_sub_analysis(las_directory,res)
+  #  tmp=merge_files(laz_files,band_names,"nodup_800_6_stack.tif",las_directory)  
+   ##dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack.tif",10000,
+#                         las_directory+"tile_66_136_"+res_code+"_stack.tif",res)
 
-#    tmp=merge_files(file_list,band_names,"tile_66_136_"+res_code+"_stack.tif",las_directory)
- @   dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack.tif",10000,
-                         las_directory+"tile_66_136_"+res_code+"_stack.tif",res)
+
+  
+
 #    print(dummy)
 
           
