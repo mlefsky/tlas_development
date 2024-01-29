@@ -10,8 +10,6 @@ import dask
 from dask.utils import SerializableLock
 import datetime
 import matplotlib
-import sys
-
 # Nate asked what my code generally looks like, so I am sharing the 
 # code I wrote to generate data products for Alaska.  The details of the
 # processing steps are less important that the overall system structure. 
@@ -227,8 +225,7 @@ def plot_imshow_with_labels(ax, data, extent, origin, xlim, ylim,cmap=None,vmin=
 #    fig = plt.figure(tight_layout=False,figsize=(6,4))
 #    """Actually run ``imshow()`` and add extent and index labels."""
 #    print(title,xtitle,ytitle)
-#t,aspect=400
-    im = ax.imshow(data, origin=origin, extent=extent,cmap=cmap,vmin=vmin,vmax=vmax)
+    im = ax.imshow(data, origin=origin, extent=extent,aspect='auto',cmap=cmap,vmin=vmin,vmax=vmax)
     font = {'family':'serif','color':'Black','size':15}
     plt.xlabel(xtitle,fontdict = font)
     plt.ylabel(ytitle,fontdict = font)
@@ -320,33 +317,13 @@ def lastool_voxelize(fname,skip_lastools=False):
     if (skip_lastools == False):
         os.system(cmd1)
         os.system(cmd2)
-    print(cmd1)
-    print(cmd2)
-    if skip_lastools==False:
-        input("lastoll_vocel")
 
-    
     txt_voxels=np.loadtxt(voxel_fname_txt,delimiter=",",comments="#")
     x=0 ; y=1 ; z=2 ; i=3
-    zdata=txt_voxels[:,z]
-#    zdata=zdata[np.logical_and(zdata<1000,zdata>0)]
-    plt.cla()
-    p99z=np.percentile(txt_voxels[:,z],98)
-    
-    print(">>>>>>>>>>>>>>>>>>[99z",p99z)
-#    plt.plot(txt_voxels[:,z])
-    print(len(txt_voxels),max(txt_voxels[:,z]))
-    print(len(zdata),len(txt_voxels[:,0]))
-    txt_voxels=txt_voxels[np.logical_and(zdata<2500,zdata>0),:]
-    print(len(txt_voxels),max(txt_voxels[:,z]))
-    plt.hist(txt_voxels[:,z],bins=40)
-    print("max",np.max(txt_voxels[:,z]))
-#    txt_voxels=txt_voxels[txt_voxels[:,z]<10000,:]
-    
     minx=np.min(txt_voxels[:,x]) ; maxx=np.max(txt_voxels[:,x]) 
     miny=np.min(txt_voxels[:,y]);maxy=np.max(txt_voxels[:,y])
     minz=np.min(txt_voxels[:,z]) ; maxz=np.max(txt_voxels[:,z])
-    
+
     if(minz < 0):
         minz=0
         
@@ -396,25 +373,13 @@ def lastool_voxelize(fname,skip_lastools=False):
     return({"voxels":voxels,"xrange":[minx,maxx],"yrange":[miny,maxy],"zrange":[minz,maxz],
          "xindex":xindex,"yindex":yindex,"zindex":zindex})
 
-def last_nonzero(arr, axis, invalid_val=-1):
-    mask = np.rot90(arr!=0,3)
-    n=len(mask[:,0])
-    print("N",n)
-#    tmp=np.where(mask.any(axis=axis), 
-    tmp=mask.argmax(axis=axis)#, invalid_val=-1)de
-    return(tmp)
-
 def first_nonzero(arr, axis, invalid_val=-1):
-    mask = np.rot90(arr!=0,1)
-    n=len(mask[:,0])
-    print("N",n)
- #   tmp=np.where(mask.any(axis=axis), 
-    tmp=mask.argmax(axis=axis)#, invalid_val=-1)
-    return(n-np.flip(tmp))
+    mask = np.rot90(arr!=0,2)
+    tmp=np.where(mask.any(axis=axis), mask.argmax(axis=axis), invalid_val)
+    return(np.flip(tmp))
 
 
-def plot_voxel_slice(slice,voxel_struct,title=None,xtitle=None,ytitle=None,
-                     show_image=True,show_plot=True,plot_color=["r","y"]):
+def plot_voxel_slice(slice,voxel_struct,title=None,xtitle=None,ytitle=None,show_image=True,show_plot=True,plot_color="r"):
     rainbow=matplotlib.colormaps['rainbow'].resampled(256)
     rainbow_mod=rainbow(np.linspace(0,1,256))
     rainbow_mod[0,:]=np.array([0,0,0,0])
@@ -423,33 +388,21 @@ def plot_voxel_slice(slice,voxel_struct,title=None,xtitle=None,ytitle=None,
     extent=(voxel_struct['xrange'][0],voxel_struct['xrange'][1],voxel_struct['zrange'][0],
             voxel_struct['zrange'][1])
             
-    
-    plt.rcParams["figure.figsize"] = (18, 8)
-
     print(extent)
     if show_image:
-#        plt.set_dpi(300)
         plt.clf()
-        imgplot=plt.imshow(np.rot90(slice,3),cmap=newcmap,vmin=0,vmax=maxv,aspect='auto',origin="lower")
-#                    title=title,xtitle=xtitle,ytitle=ytitle)
+        imgplot=plt.imshow(np.rot90(slice),cmap=newcmap,vmin=0,vmax=maxv,aspect='auto')
+
 #        tmp=plot_imshow_with_labels(plt, slice, extent,"lower",None,None,
 #                                    cmap=newcmap,vmin=0,vmax=maxv,
 #                                    title=title,xtitle=xtitle,ytitle=ytitle)
+
     if show_plot:
-        slice_maxz=first_nonzero(slice,0)
-        slice_minz=last_nonzero(slice,0)
         slice=np.rot90(slice,3)
-        print(len(slice))
-        print("slicemax")
-        print(slice_minz)
-        print(slice_maxz)
-        print(slice_maxz.shape)
-        plt.plot(slice_maxz,color=plot_color[0])
-        plt.plot((slice_minz),color=plot_color[1],marker="*")
-        plt.show()
-        fname="/home/ubuntu/density_comparison_v2_vfig_1.png"
-        plt.savefig(fname)
-    return(slice_maxz,slice_minz)
+        slice_maxz=first_nonzero(slice,0)
+        plt.plot(np.flip(slice_maxz),color=plot_color)
+
+    return(slice_maxz)
 
 #    print(type(tmp))
 
@@ -1013,11 +966,10 @@ def merge_files(file_list,band_names,ofilename,las_directory):
 
     no_data=-9999
     print(")()()()()()()()(",file_list,len(file_list))
-
     with rasterio.open(las_directory+file_list[0]) as src0:
         meta = src0.meta
     print("lbn2",len(band_names),len(file_list))
-    # Update meta to reflect the number of layers
+    # Update meta to reflect the number of layersc
 
     height1,width1=src0.shape
     meta.update(count = len(file_list))
@@ -1040,6 +992,7 @@ def merge_files(file_list,band_names,ofilename,las_directory):
 #        print("DST",dst.meta)
         
         for id in range(1,1+len(file_list)):
+            print(id)
             #print(type(id))
             layer=file_list[int(id)-1]
             #print("ID",int(id),layer)  img
@@ -1106,35 +1059,34 @@ def tile_files(res):
     # "tile_66_136_sub_04_pdsm.tif",
     # "tile_66_136_sub_04_pdtm.tif"]
 
-    res_code=str(res).replace('.','')
-
-    file_list1=['tile_66_136_sub_01_$res_code_sub_01_chm.tif',
+    
+    file_list1=['tile_66_136_sub_01_sub_01_chm.tif',
     'tile_66_136_sub_01_sub_01_cover.tif',
     'tile_66_136_sub_01_density_lt1_sub_01.tif',
     'tile_66_136_sub_01_density_sub_01.tif',
     'tile_66_136_sub_01_pdsm.tif',
-    'tile_66_136_sub_01_$res_code_pdtm.tif',
+    'tile_66_136_sub_01_pdtm.tif',
 
-    'tile_66_136_sub_02_$res_code_sub_02_chm.tif',
+    'tile_66_136_sub_02_sub_02_chm.tif',
     'tile_66_136_sub_02_sub_02_cover.tif',
     'tile_66_136_sub_02_density_lt1_sub_02.tif',
     'tile_66_136_sub_02_density_sub_02.tif',
     'tile_66_136_sub_02_pdsm.tif',
-    'tile_66_136_sub_02_$res_code_pdtm.tif',
+    'tile_66_136_sub_02_pdtm.tif',
 
-    'tile_66_136_sub_03_$res_code_sub_03_chm.tif',
+    'tile_66_136_sub_03_sub_03_chm.tif',
     'tile_66_136_sub_03_sub_03_cover.tif',
     'tile_66_136_sub_03_density_lt1_sub_03.tif',
     'tile_66_136_sub_03_density_sub_03.tif',
     'tile_66_136_sub_03_pdsm.tif',
-    'tile_66_136_sub_03_$res_code_pdtm.tif',
+    'tile_66_136_sub_03_pdtm.tif',
 
-    'tile_66_136_sub_04_$res_code_sub_04_chm.tif',
+    'tile_66_136_sub_04_sub_04_chm.tif',
     'tile_66_136_sub_04_sub_04_cover.tif',
     'tile_66_136_sub_04_density_lt1_sub_04.tif',
     'tile_66_136_sub_04_density_sub_04.tif',
     'tile_66_136_sub_04_pdsm.tif',
-    'tile_66_136_sub_04_$res_code_pdtm.tif']             
+    'tile_66_136_sub_04_pdtm.tif']             
              
     file_list=[x.replace('$res_code',res_code) for x in file_list1]
         
@@ -1234,14 +1186,11 @@ def do_sub_analysis(las_directory,files,res):
 #==============================================================================
 
 def mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False):
-#   las_directory="/home/ubuntu/time_trials/"
- #  dtm_filename="tile_66_136_dtm.tif"
+   las_directory="/home/ubuntu/time_trials/"
+   dtm_filename="tile_66_136_dtm.tif"
    (json_file,hag_filename)=tlas_voxel_zscale(filename,dtm_filename,8153,4,las_directory) 
    if skip_lastools == False:
        os.system("pdal pipeline "+json_file)
-   if skip_lastools ==False:
-       input("voxel_work")
-
    voxels=lastool_voxelize(hag_filename,skip_lastools=skip_lastools)
    return(voxels)
 
@@ -1250,7 +1199,7 @@ def main(skip_lastools=False):
     
 #    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
 
-    las_directory="/home/ubuntu/time_trials/"
+    las_directory="/home/ubuntu/density_comparison_v2/"
 
 
 #####################################################################
@@ -1258,30 +1207,28 @@ def main(skip_lastools=False):
  # 
  
  #   return()   
-    las_directory="/home/ubuntu/density_comparison_v2/"
+ 
+#    filename="tile_66_136_sub_01.laz"
+#    dtm_filename="tile_66_136_dtm.tif"
+ 
+#    tmp1=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
+ #   
+ #   filename="tile_66_136_sub_02.laz"
+ #   las_directory="/home/ubuntu/time_trials/"
+ #   dtm_filename="tile_66_136_dtm.tif"
+ #   tmp2=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
 
-    filename="nodup_669_8.laz"
-    dtm_filename="nodup_669_8_pdtm.tif"
- 
-    tmp1=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
-#    mk_voxels(filename,dtm_filename,las_directory,skip_lastools=False)
-    filename="nodup_100_22.laz"
-    dtm_filename="nodup_100_22_pdtm.tif"
-    tmp2=mk_voxels(filename,dtm_filename,las_directory,skip_lastools=True)
- 
-    print(tmp1['voxels'].shape)   
-    print(tmp2['voxels'].shape)   
-#    diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
-#    print("minmax ",np.min(diff),np.max(diff))
-    return((tmp1,tmp2)) 
+ #   diff=tmp1['voxels'][:,400,:]-tmp2['voxels'][:,400,:]
+ #   print("minmax ",np.min(diff),np.max(diff))
+ #   return((tmp1,tmp2,diff)) 
 #####################################################################
 
-sys.exit()
+
 #
 #               tile_66_136_sub_01_hagscale_voxel.txt
 
-print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'),skip_lastools=True)  
-print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'),skip_lastools=True)  
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
+#    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
   
 #    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))  
 #    print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40.laz'))
@@ -1291,9 +1238,11 @@ print(lastool_voxelize('/home/ubuntu/time_trials/tile_66_136_sub_01_hag_scale_40
  #    re=6.56
 #    laz_files=["nodup_100_22.laz","nodup_512_11.laz","nodup_669_8.laz","nodup_985_4.laz"]
 #    laz_files=["nodup_800_6.laz"]
-res=3.28
+
+    res=3.28
 #    res=1.64
-res_code=str(res).replace('.',"")
+#    res_code=str(res).replace('.',"")
+    res_code=""
 
 #    do_sub_analysis(las_directory,laz_files,res)
 
@@ -1302,43 +1251,125 @@ res_code=str(res).replace('.',"")
 ##    las_directory=las_directory.replace("$res_code",res_code)
 #    laz_files=["nodup_800_6.laz"]
  #   print 
-     
-     
-laz_files=['nodup_0582_9p5_chm.tif',
-  'nodup_0582_9p5_cover.tif',
-  'nodup_0582_9p5_density_lt1.tif',
-  'nodup_0582_9p5_density.tif',
-  'nodup_0582_9p5_pdsm.tif',
-  'nodup_0582_9p5_pdtm.tif']
- ##    tmp=do_sub_analysis(las_directory,res)
-band_names= ["nodup_0582_9p5_chm",
-"nodup_0582_9p5_cover",
-"nodup_0582_9p5_density_lt1",
-"nodup_0582_9p5_density",
-"nodup_0582_9p5_pdsm",
-"nodup_0582_9p5_pdtm"]
- 
-filename="nodup_0582_9p5_stack.tif"
-laz_files=['nodup_800_6_chm.tif',
-   'nodup_800_6_cover.tif',
-   'nodup_800_6_density_lt1.tif',
-   'nodup_800_6_density.tif',
-   'nodup_800_6_pdsm.tif',
-   'nodup_800_6_pdtm.tif']
- # ##    tmp=do_sub_analysis(las_directory,res)
-band_names= ["nodup_800_6_chm",
- "nodup_800_6_cover",
- "nodup_800_6_density_lt1",
- "nodup_800_6_density",
- "nodup_800_6_pdsm",
- "nodup_800_6_pdtm"]
-filename="nodup_800_6_stack.tif"
+    
+  
 
-#tmp=merge_files(laz_files,band_names,filename,las_directory)  
-##dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack.tif",10000,
-#                         las_directory+"tile_66_136_"+res_code+"_stack.tif",res)
-#t=main()
-tmp=plot_voxel_slice(t[0]['voxels'][i,:],t[0])
+    # band_names=[x.replace('$res_code',res_code) for x in band_names1]
+
+    # file_list1.append(['nodup_0582_9p5_chm.tif',
+    #  'nodup_0582_9p5_cover.tif',
+    #  'nodup_0582_9p5_density_lt1.tif',
+    #  'nodup_0582_9p5_density.tif',
+    #  'nodup_0582_9p5_pdsm.tif',
+    #  'nodup_0582_9p5_pdtm.tif'] )   ##    tmp=do_sub_analysis(las_directory,res)
+    # band_names.append(["nodup_0582_9p5_chm",
+    #    "nodup_0582_9p5_cover",
+    #    "nodup_0582_9p5_density_lt1",
+    #    "nodup_0582_9p5_density",
+    #    "nodup_0582_9p5_pdsm",
+    #    "nodup_0582_9p5_pdtm"])
+
+    # file_list1.append(["nodup_800_6_chm.tif",
+    #   'nodup_800_6_cover.tif',
+    #   'nodup_800_6_density_lt1.tif',
+    #   'nodup_800_6_density.tif',
+    #   'nodup_800_6_pdsm.tif',
+    #   'nodup_800_6_pdtm.tif'])
+    # band_names.append(["nodup_800_6_chm",
+    #     "nodup_800_6_cover",
+    #     "nodup_800_6_density_lt1",
+    #     "nodup_800_6_density",
+    #     "nodup_800_6_pdsm",
+    #     "nodup_800_6_pdtm"])
+    # filename="multistack.tif"
+    
+    
+    file_list=["nodup_0582_9p5_chm.tif",
+        "nodup_0582_9p5_cover.tif",
+        "nodup_0582_9p5_density.tif",
+        "nodup_0582_9p5_density_lt1.tif",
+        "nodup_0582_9p5_pdsm.tif",
+        "nodup_100_22_chm.tif",
+        "nodup_100_22_cover.tif",
+        "nodup_100_22_density.tif",
+        "nodup_100_22_density_lt1.tif",
+        "nodup_100_22_pdsm.tif",
+        "nodup_100_22_pdtm.tif",
+        "nodup_512_11_chm.tif",
+        "nodup_512_11_cover.tif",
+        "nodup_512_11_density.tif",
+        "nodup_512_11_density_lt1.tif",
+        "nodup_512_11_pdsm.tif",
+        "nodup_512_11_pdtm.tif",
+        "nodup_669_8_chm.tif",
+        "nodup_669_8_cover.tif",
+        "nodup_669_8_density.tif",
+        "nodup_669_8_density_lt1.tif",
+        "nodup_669_8_pdsm.tif",
+        "nodup_669_8_pdtm.tif",
+        "nodup_800_6_chm.tif",
+        "nodup_800_6_cover.tif",
+        "nodup_800_6_density.tif",
+        "nodup_800_6_density_lt1.tif",
+        "nodup_800_6_pdsm.tif",
+        "nodup_800_6_pdtm.tif",
+        "nodup_985_4_chm.tif",
+        "nodup_985_4_cover.tif",
+        "nodup_985_4_density.tif",
+        "nodup_985_4_density_lt1.tif",
+        "nodup_985_4_pdsm.tif",
+        "nodup_985_4_pdtm.tif"]
+    
+    
+    band_list=["chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "pdtm",
+        "chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "pdtm",
+        "chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "pdtm",
+        "chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "pdtm",
+        "chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "pdtm",
+        "chm",
+        "cover",
+        "density",
+        "density_lt1",
+        "pdsm",
+        "dtm"]
+
+    
+    filename="multistack_v2_out.tif"
+    print(len(file_list),len(band_list))
+
+    s=match_and_substract(ef,"/home/ubuntu/density_comparison_v2/multistack_v2.tif",band_list)
+    filename="multistack_v2_out.tif"
+
+#    tmp=merge_files(file_list,band_list,filename,las_directory)  
+   ##dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack",10000,
+#                         las_directory+"tile_66_136_"+res_code+"_stackq",res)
+
+
   
 
 #    print(dummy)

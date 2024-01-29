@@ -73,7 +73,6 @@ def extract_fileinfo(filenames):
         out.append(tmp)
     return(out)
     
-ef=extract_fileinfo(file_list)
 #
 #print(ef[0])
 
@@ -343,14 +342,101 @@ def match_and_substract_8_22(efinfo,in_image,titles,verbose=False):#efinfo
 
 #   for ix,af in enumerate(efinfo):
 
-     
-    print(mask.shape)
-     
-    return(baseline_filenames,baseline_vars,af)
+file_list=["nodup_0582_9p5_pdtm.tif",
+    "nodup_0582_9p5_cover.tif",
+    "nodup_0582_9p5_density.tif",
+    "nodup_0582_9p5_density_lt1.tif",
+    "nodup_0582_9p5_pdsm.tif",
+    "nodup_0582_9p5_pdtm.tif",
+    "nodup_100_22_chm.tif",
+    "nodup_100_22_cover.tif",
+    "nodup_100_22_density.tif",
+    "nodup_100_22_density_lt1.tif",
+    "nodup_100_22_pdsm.tif",
+    "nodup_100_22_pdtm.tif",
+    "nodup_512_11_chm.tif",
+    "nodup_512_11_cover.tif",
+    "nodup_512_11_density.tif",
+    "nodup_512_11_density_lt1.tif",
+    "nodup_512_11_pdsm.tif",
+    "nodup_512_11_pdtm.tif",
+    "nodup_669_8_chm.tif",
+    "nodup_669_8_cover.tif",
+    "nodup_669_8_density.tif",
+    "nodup_669_8_density_lt1.tif",
+    "nodup_669_8_pdsm.tif",
+    "nodup_669_8_pdtm.tif",
+    "nodup_800_6_chm.tif",
+    "nodup_800_6_cover.tif",
+    "nodup_800_6_density.tif",
+    "nodup_800_6_density_lt1.tif",
+    "nodup_800_6_pdsm.tif",
+    "nodup_800_6_pdtm.tif",
+    "nodup_985_4_chm.tif",
+    "nodup_985_4_cover.tif",
+    "nodup_985_4_density.tif",
+    "nodup_985_4_density_lt1.tif",
+    "nodup_985_4_pdsm.tif",
+    "nodup_985_4_pdtm.tif"]
 
-print(ef[0])
+
+band_list=["chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "pdtm",
+    "chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "pdtm",
+    "chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "pdtm",
+    "chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "pdtm",
+    "chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "pdtm",
+    "chm",
+    "cover",
+    "density",
+    "density_lt1",
+    "pdsm",
+    "dtm"]
+
+
+filename="multistack_v2_out.tif"
+ef=extract_fileinfo(file_list)
+print(len(file_list),len(band_list))
+
+s=match_and_subtract(ef,"/home/ubuntu/density_comparison_v2/multistack_v2.tif",band_list)
+
+#    tmp=merge_files(file_list,band_list,filename,las_directory)  
+   ##dummy=image_to_table(las_directory+"tile_66_136_"+res_code+"_stack",10000,
+#                         las_directory+"tile_66_136_"+res_code+"_stackq",res)
+
+
+  
+
+#    print(dummy)
+
+          
+#if __name__ == "__main__":  
 
 #mas=match_and_substract_8_22(ef,"/home/ubuntu/density_comparison_v2/multistack2.tif",title)
-mas=match_and_substract(ef,"/home/ubuntu/density_comparison_v2/multistack2.tif",title)
+mas=match_and_substract(ef,"/home/ubuntu/density_comparison_v2/multistack_v2.tif",title)
 
 
